@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Controle IoT</title>
+  </head>
+  <body>
+    <h1>Controle do LED</h1>
+
+    <button onclick="ligar()">Ligar</button>
+    <button onclick="desligar()">Desligar</button>
+
+    <script src="https://unpkg.com/paho-mqtt/mqttws31.min.js"></script>
+
+    <script>
+      const client = new Paho.MQTT.Client(
+        "broker.hivemq.com",
+        8000,
+        "web_" + parseInt(Math.random() * 1000),
+      );
+
+      client.onConnectionLost = function (responseObject) {
+        console.log("Conexão perdida");
+      };
+
+      client.connect({
+        onSuccess: () => {
+          console.log("Conectado ao broker");
+        },
+      });
+
+      function ligar() {
+        const message = new Paho.MQTT.Message("1");
+        message.destinationName = "frankai/led";
+        client.send(message);
+      }
+
+      function desligar() {
+        const message = new Paho.MQTT.Message("0");
+        message.destinationName = "frankai/led";
+        client.send(message);
+      }
+    </script>
+  </body>
+</html>
