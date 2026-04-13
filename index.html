@@ -1,83 +1,92 @@
 <!doctype html>
 <html lang="pt-BR">
   <head>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css">
     <meta charset="UTF-8" />
     <title>Controle IoT</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css">
+    <style>
+      .title, .button{
+        font-family:Georgia, 'Times New Roman', Times, serif;
+      }
+      .bt1:hover{
+        background-color: #F69C9E;
+        font-weight: 700;
+      }
+      .bt2:hover{
+        background-color: #97E3C2;
+        font-weight: 700;
+      }
+      .hero{
+        background-color: rgb(232, 236, 243);
+      }
+      .box{
+        background-color: #AAD2EC ;
+      }
+    </style>
   </head>
   <body>
-    <h1>Controle do LED</h1>
+    <section class="hero is-fullheight">
+      <div class="hero-body">
+        <div class="container has-text-centered">
 
-    <button onclick="ligar()" id="btn-on" disabled class="button">Ligar</button>
-    <button onclick="desligar()" id="btn-off" disabled class="button">Desligar</button>
-    <p id="status">Conectando...</p>
+          <div class="box" style="max-width: 440px; height: 300px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <h1 class="title is-4">Controle do LED</h1>
+            <p id="status" class="has-text-black mb-4">Conectando...</p>
+            <div class="buttons is-centered">
+              <button id="btn-on"  onclick="ligar()"    disabled class="button bt2">Ligar</button>
+              <button id="btn-off" onclick="desligar()" disabled class="button bt1">Desligar</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
-
     <script>
       const TOPIC = "frankai/led";
-
       const client = new Paho.MQTT.Client(
-        "broker.emqx.io",
-        8084,
-        "web_" + Math.floor(Math.random() * 10000),);
-
+        "broker.emqx.io", 8084,
+        "web_" + Math.floor(Math.random() * 10000)
+      );
       let conectado = false;
 
-      client.onConnectionLost = function (responseObject) {
-        console.log("Conexão perdida:", responseObject);
+      client.onConnectionLost = function() {
         conectado = false;
+        const s = document.getElementById('status');
+        s.textContent = 'Conexão perdida. Reconectando...';
+        s.className = 'has-text-danger mb-4';
+        document.getElementById('btn-on').disabled = true;
+        document.getElementById('btn-off').disabled = true;
         setTimeout(conectarMQTT, 2000);
       };
 
       function conectarMQTT() {
-        console.log("Conectando ao HiveMQ...");
-
         client.connect({
           useSSL: true,
-          timeout: 5,
+          timeout: 10,
           cleanSession: true,
-
           onSuccess: () => {
             conectado = true;
-            document.getElementById('status').textContent = 'Conectado';
+            const s = document.getElementById('status');
+            s.textContent = 'Conectado';
+            s.className = 'has-text-black mb-4';
             document.getElementById('btn-on').disabled = false;
             document.getElementById('btn-off').disabled = false;
           },
-
-          onFailure: (erro) => {
-            console.log("Erro na conexão:", erro);
-            conectado = false;
-
-            setTimeout(conectarMQTT, 2000);
-          },
+          onFailure: () => setTimeout(conectarMQTT, 2000),
         });
       }
-
       conectarMQTT();
 
       function enviar(valor) {
-        if (!conectado) {
-          console.log("Ainda não conectado!");
-          return;
-        }
-
+        if (!conectado) return;
         const msg = new Paho.MQTT.Message(valor);
         msg.destinationName = TOPIC;
-
         client.send(msg);
-        console.log("Enviado:", valor);
       }
-
-      function ligar() {
-        console.log("Clique: ligar");
-        enviar("1");
-      }
-
-      function desligar() {
-        console.log("Clique: desligar");
-        enviar("0");
-      }
+      function ligar()    { enviar("1"); }
+      function desligar() { enviar("0"); }
     </script>
   </body>
 </html>
