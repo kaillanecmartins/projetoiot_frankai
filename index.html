@@ -1,43 +1,82 @@
 <!doctype html>
-<html>
+<html lang="pt-BR">
   <head>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css">
+    <meta charset="UTF-8" />
     <title>Controle IoT</title>
   </head>
   <body>
     <h1>Controle do LED</h1>
 
-    <button onclick="ligar()">Ligar</button>
-    <button onclick="desligar()">Desligar</button>
+    <button onclick="ligar()" id="btn-on" disabled class="button">Ligar</button>
+    <button onclick="desligar()" id="btn-off" disabled class="button">Desligar</button>
+    <p id="status">Conectando...</p>
 
-    <script src="https://unpkg.com/paho-mqtt/mqttws31.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
 
     <script>
+      const TOPIC = "frankai/led";
+
       const client = new Paho.MQTT.Client(
-        "broker.hivemq.com",
-        8000,
-        "web_" + parseInt(Math.random() * 1000),
-      );
+        "broker.emqx.io",
+        8084,
+        "web_" + Math.floor(Math.random() * 10000),);
+
+      let conectado = false;
 
       client.onConnectionLost = function (responseObject) {
-        console.log("Conexão perdida");
+        console.log("Conexão perdida:", responseObject);
+        conectado = false;
+        setTimeout(conectarMQTT, 2000);
       };
 
-      client.connect({
-        onSuccess: () => {
-          console.log("Conectado ao broker");
-        },
-      });
+      function conectarMQTT() {
+        console.log("Conectando ao HiveMQ...");
+
+        client.connect({
+          useSSL: true,
+          timeout: 5,
+          cleanSession: true,
+
+          onSuccess: () => {
+            conectado = true;
+            document.getElementById('status').textContent = 'Conectado';
+            document.getElementById('btn-on').disabled = false;
+            document.getElementById('btn-off').disabled = false;
+          },
+
+          onFailure: (erro) => {
+            console.log("Erro na conexão:", erro);
+            conectado = false;
+
+            setTimeout(conectarMQTT, 2000);
+          },
+        });
+      }
+
+      conectarMQTT();
+
+      function enviar(valor) {
+        if (!conectado) {
+          console.log("Ainda não conectado!");
+          return;
+        }
+
+        const msg = new Paho.MQTT.Message(valor);
+        msg.destinationName = TOPIC;
+
+        client.send(msg);
+        console.log("Enviado:", valor);
+      }
 
       function ligar() {
-        const message = new Paho.MQTT.Message("1");
-        message.destinationName = "frankai/led";
-        client.send(message);
+        console.log("Clique: ligar");
+        enviar("1");
       }
 
       function desligar() {
-        const message = new Paho.MQTT.Message("0");
-        message.destinationName = "frankai/led";
-        client.send(message);
+        console.log("Clique: desligar");
+        enviar("0");
       }
     </script>
   </body>
