@@ -9,6 +9,7 @@
   <style>
       .title, .button{
         font-family:Georgia, 'Times New Roman', Times, serif;
+        color: black;
       }
       .bt1:hover{
         background-color: #F69C9E;
@@ -36,7 +37,10 @@
   <div class="hero-body">
     <div class="container">
 
-      <h1 class="title has-text-centered mb-5">Dashboard IoT</h1>
+      <h1 class="title has-text-centered mb-5">Projeto IoT - Franciele e Kaillane</h1>
+        <div id="alerta-gas" class="notification is-danger is-light" style="display: none;">
+          Nível de gás elevado! Risco de incêndio!
+        </div>
 
       <div class="columns is-multiline">
 
@@ -93,6 +97,9 @@ const client = new Paho.MQTT.Client(
   "web_" + Math.random()
 );
 
+const LIMITE_GAS = 1500;
+let alertaAtivo = false;
+
 client.onMessageArrived = function(message) {
   const data = JSON.parse(message.payloadString);
 
@@ -105,8 +112,24 @@ client.onMessageArrived = function(message) {
   document.getElementById("pir").textContent =
     data.movimento ? "Detectado" : "Sem movimento";
 
-  document.getElementById("mq2").textContent =
-    data.gas;
+  document.getElementById("mq2").textContent = data.gas;
+
+  const alerta = document.getElementById("alerta-gas");
+
+  if (data.gas > LIMITE_GAS) {
+
+    alerta.style.display = "block";
+
+    if (!alertaAtivo) {
+      alertaAtivo = true;
+
+      alert("ALERTA: Nível de gás perigoso!");
+    }
+
+  } else {
+    alerta.style.display = "none";
+    alertaAtivo = false;
+  }
 };
 
 function conectar() {
