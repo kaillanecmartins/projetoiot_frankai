@@ -1,10 +1,12 @@
 <!doctype html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Controle IoT</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css">
-    <style>
+<head>
+  <meta charset="UTF-8" />
+  <title>Dashboard IoT</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css">
+
+  <style>
       .title, .button{
         font-family:Georgia, 'Times New Roman', Times, serif;
       }
@@ -22,71 +24,110 @@
       .box{
         background-color: #AAD2EC ;
       }
+      .card{
+        background-color: #AAD2EC ;
+        color: black;
+      }
     </style>
-  </head>
-  <body>
-    <section class="hero is-fullheight">
-      <div class="hero-body">
-        <div class="container has-text-centered">
+</head>
 
-          <div class="box" style="max-width: 440px; height: 300px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-            <h1 class="title is-4">Controle do LED</h1>
-            <p id="status" class="has-text-black mb-4">Conectando...</p>
-            <div class="buttons is-centered">
-              <button id="btn-on"  onclick="ligar()"    disabled class="button bt2">Ligar</button>
-              <button id="btn-off" onclick="desligar()" disabled class="button bt1">Desligar</button>
-            </div>
+<body>
+<section class="hero is-fullheight">
+  <div class="hero-body">
+    <div class="container">
+
+      <h1 class="title has-text-centered mb-5">Dashboard IoT</h1>
+
+      <div class="columns is-multiline">
+
+        <div class="column is-3">
+          <div class="card has-text-centered p-4">
+            <p>Temperatura</p>
+            <p id="temp" class="sensor-value">-- °C</p>
           </div>
+        </div>
 
+        <div class="column is-3">
+          <div class="card has-text-centered p-4">
+            <p>Umidade</p>
+            <p id="hum" class="sensor-value">-- %</p>
+          </div>
+        </div>
+
+        <div class="column is-3">
+          <div class="card has-text-centered p-4">
+            <p>Movimento</p>
+            <p id="pir" class="sensor-value">--</p>
+          </div>
+        </div>
+
+        <div class="column is-3">
+          <div class="card has-text-centered p-4">
+            <p>Gás</p>
+            <p id="mq2" class="sensor-value">--</p>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="box mt-6" style="max-width: 400px; margin: auto;">
+        <h2 class="title is-5 has-text-centered">Controle do LED</h2>
+        <p id="status" class="has-text-centered">Conectando...</p>
+
+        <div class="buttons is-centered mt-3">
+          <button onclick="enviar('1')" class="button is-success">Ligar</button>
+          <button onclick="enviar('0')" class="button is-danger">Desligar</button>
         </div>
       </div>
-    </section>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
-    <script>
-      const TOPIC = "frankai/led";
-      const client = new Paho.MQTT.Client(
-        "broker.emqx.io", 8084,
-        "web_" + Math.floor(Math.random() * 10000)
-      );
-      let conectado = false;
+    </div>
+  </div>
+</section>
 
-      client.onConnectionLost = function() {
-        conectado = false;
-        const s = document.getElementById('status');
-        s.textContent = 'Conexão perdida. Reconectando...';
-        s.className = 'has-text-danger mb-4';
-        document.getElementById('btn-on').disabled = true;
-        document.getElementById('btn-off').disabled = true;
-        setTimeout(conectarMQTT, 2000);
-      };
+<script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
 
-      function conectarMQTT() {
-        client.connect({
-          useSSL: true,
-          timeout: 10,
-          cleanSession: true,
-          onSuccess: () => {
-            conectado = true;
-            const s = document.getElementById('status');
-            s.textContent = 'Conectado';
-            s.className = 'has-text-black mb-4';
-            document.getElementById('btn-on').disabled = false;
-            document.getElementById('btn-off').disabled = false;
-          },
-          onFailure: () => setTimeout(conectarMQTT, 2000),
-        });
-      }
-      conectarMQTT();
+<script>
+const client = new Paho.MQTT.Client(
+  "broker.emqx.io",
+  8084,
+  "web_" + Math.random()
+);
 
-      function enviar(valor) {
-        if (!conectado) return;
-        const msg = new Paho.MQTT.Message(valor);
-        msg.destinationName = TOPIC;
-        client.send(msg);
-      }
-      function ligar()    { enviar("1"); }
-      function desligar() { enviar("0"); }
-    </script>
-  </body>
+client.onMessageArrived = function(message) {
+  const data = JSON.parse(message.payloadString);
+
+  document.getElementById("temp").textContent =
+    data.temperatura.toFixed(1) + " °C";
+
+  document.getElementById("hum").textContent =
+    data.umidade.toFixed(1) + " %";
+
+  document.getElementById("pir").textContent =
+    data.movimento ? "Detectado" : "Sem movimento";
+
+  document.getElementById("mq2").textContent =
+    data.gas;
+};
+
+function conectar() {
+  client.connect({
+    useSSL: true,
+    onSuccess: () => {
+      document.getElementById("status").textContent = "Conectado";
+      client.subscribe("frankai/sensores");
+    },
+    onFailure: () => setTimeout(conectar, 2000)
+  });
+}
+
+function enviar(valor) {
+  const msg = new Paho.MQTT.Message(valor);
+  msg.destinationName = "frankai/led";
+  client.send(msg);
+}
+
+conectar();
+</script>
+
+</body>
 </html>
